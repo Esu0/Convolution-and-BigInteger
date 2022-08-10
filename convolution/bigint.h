@@ -51,6 +51,7 @@ public:
 		fix_carry();
 	}
 
+	//基数変換10->任意
 	static ubigint<num_base> hex(const char* str)
 	{
 		if constexpr (is_pow2(num_base))
@@ -63,27 +64,33 @@ public:
 		}
 	}
 
+	//基数変換16->任意
 	static ubigint<num_base> dec(const char* str)
 	{
 		return ubigint();
 	}
 
+	//コピー代入コンストラクタ
 	ubigint(const ubigint& _Right): dat(_Right.dat)
 	{}
 
+	//ムーブ代入コンストラクタ
 	ubigint(ubigint&& _Right)noexcept : dat(std::move(_Right.dat))
 	{}
 
+	//コピー代入演算子
 	ubigint& operator=(const ubigint _Right)
 	{
 		dat = _Right.dat;
 	}
 
+	//ムーブ代入演算子
 	ubigint& operator=(ubigint&& _Right)noexcept
 	{
 		dat = std::move(_Right.dat);
 	}
 
+	//前置インクリメント
 	ubigint& operator++()
 	{
 		for (size_t i = 0; i < dat.size(); ++i)
@@ -95,6 +102,7 @@ public:
 		dat.push_back(1);
 	}
 
+	//後置インクリメント
 	ubigint operator++(int)
 	{
 		ubigint<num_base> tmp = *this;
@@ -102,6 +110,7 @@ public:
 		return tmp;
 	}
 
+	//前置デクリメント
 	ubigint& operator--()
 	{
 		if (dat.size() == 1 && dat[0] == 0)
@@ -124,6 +133,7 @@ public:
 		return *this;
 	}
 
+	//後置デクリメント
 	ubigint operator--(int)
 	{
 		ubigint<num_base> tmp = *this;
@@ -131,6 +141,7 @@ public:
 		return tmp;
 	}
 
+	//複合代入(足し算)
 	ubigint& operator+=(const ubigint& _Right)
 	{
 		if (_Right.dat.size() > dat.size())dat.resize(_Right.dat.size(), 0);
@@ -138,6 +149,7 @@ public:
 		fix_carry();
 	}
 
+	//足し算
 	[[nodiscard]]
 	ubigint operator+(ubigint _Right)const&
 	{
@@ -145,6 +157,7 @@ public:
 		return _Right;
 	}
 
+	//複合代入(引き算)
 	ubigint& operator-=(const ubigint& _Right)
 	{
 		if (_Right.dat.size() > dat.size())dat.resize(_Right.dat.size(), 0);
@@ -160,6 +173,7 @@ public:
 		_Right.fix_carry();
 	}
 
+	//引き算
 	[[nodiscard]]
 	ubigint operator-(ubigint _Right)const&
 	{

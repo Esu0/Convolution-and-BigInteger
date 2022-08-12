@@ -3,7 +3,6 @@
 #ifndef _CONVOLUTION_H_
 #define _CONVOLUTION_H_
 
-#include<cstdlib>
 #include<random>
 #include<vector>
 #include<cassert>
@@ -23,35 +22,47 @@ constexpr unsigned long msb(unsigned long x)
 	return ++x;
 }
 
-constexpr unsigned long _log2(unsigned long x)
+constexpr unsigned long _log2(unsigned long long x)
 {
 	unsigned long answer = 0;
-	if (x & 0xffff0000)
+	if (x & 0xffffffff00000000)
 	{
-		x &= 0xffff0000;
+		x &= 0xffffffff00000000;
+		answer |= 0x00000020;
+	}
+	if (x & 0xffff0000ffff0000)
+	{
+		x &= 0xffff0000ffff0000;
 		answer |= 0x00000010;
 	}
-	if (x & 0xff00ff00)
+	if (x & 0xff00ff00ff00ff00)
 	{
-		x &= 0xff00ff00;
+		x &= 0xff00ff00ff00ff00;
 		answer |= 0x00000008;
 	}
-	if (x & 0xf0f0f0f0)
+	if (x & 0xf0f0f0f0f0f0f0f0)
 	{
 		x &= 0xf0f0f0f0;
 		answer |= 0x00000004;
 	}
-	if (x & 0xcccccccc)
+	if (x & 0xcccccccccccccccc)
 	{
-		x &= 0xcccccccc;
+		x &= 0xcccccccccccccccc;
 		answer |= 0x00000002;
 	}
-	if (x & 0xaaaaaaaa)
+	if (x & 0xaaaaaaaaaaaaaaaa)
 	{
-		x &= 0xaaaaaaaa;
+		x &= 0xaaaaaaaaaaaaaaaa;
 		answer |= 0x00000001;
 	}
 	return answer;
+}
+
+constexpr unsigned long _log10(unsigned long long x)
+{
+	unsigned long count = 0;
+	while (x /= 10)++count;
+	return count;
 }
 
 constexpr unsigned long minv_R(unsigned long i, unsigned long t, unsigned long r, unsigned long mod)
@@ -80,6 +91,28 @@ constexpr bool is_pow2(unsigned long long x)
 	return !(x ^ (x & (unsigned long long)(-(signed long long)x)));
 }
 
+template<unsigned long long b>
+constexpr bool is_pow(unsigned long long x)
+{
+	static_assert(b >= 2, "指数の底が不正な値");
+	while (x % b == 0)
+	{
+		x /= b;
+	}
+	return x == 1;
+}
+
+constexpr unsigned long long ceil_pow2(unsigned long long x)
+{
+	--x;
+	x |= x >> 1;
+	x |= x >> 2;
+	x |= x >> 4;
+	x |= x >> 8;
+	x |= x >> 16;
+	x |= x >> 32;
+	return x + 1;
+}
 
 template<unsigned long mod>
 class mod_productor
@@ -158,7 +191,7 @@ unsigned long get_prim_root(unsigned long mod)
 		for (auto tmp : prime_factor)
 		{
 			prod = mod / tmp;
-			if (mpow(candidate, prod, mod + 1) == 1)
+			if (mpow(candidate, prod, (unsigned long long)mod + 1) == 1)
 			{
 				loopend = false;
 				break;
@@ -170,7 +203,8 @@ unsigned long get_prim_root(unsigned long mod)
 }
 
 //aとmodは互いに素
-constexpr long long minv(long long a, long long mod)
+template<unsigned long mod>
+constexpr long long _minv(long long a)
 {
 	long long b = mod, u = 1, v = 0;
 	while (b)
@@ -184,9 +218,19 @@ constexpr long long minv(long long a, long long mod)
 		a = b;
 		b = tmp % b;
 	}
-	u %= mod;
+	u %= (long long)mod;
 	if (u < 0)u += mod;
 	return u;
+}
+
+template<unsigned long mod1, unsigned long mod2>
+long long _garner2(long long r1, long long r2)
+{
+	static constexpr unsigned long m1_inv = (unsigned long)_minv<mod2>(mod1);
+	r2 = ((r2 - r1) * m1_inv) % (long long)mod2;
+	if (r2 < 0)r2 += mod2;
+	r1 += r2 * mod1;
+	return r1;
 }
 
 template<unsigned long mod, unsigned long g>
@@ -213,7 +257,7 @@ public:
 	constexpr ntt()
 	{
 		root[rank] = (unsigned long)mpow(g, (mod - 1) >> rank, mod);
-		iroot[rank] = (unsigned long)minv(root[rank], mod);
+		iroot[rank] = (unsigned long)_minv<mod>(root[rank]);
 		for (unsigned char i = rank; i > 0;)
 		{
 			--i;
@@ -240,8 +284,8 @@ public:
 template<unsigned mod, unsigned long g, bool inv = false>
 void number_theoretic_transform(long long *v, unsigned long size)
 {
-	assert(is_pow2(size) && size > 2);
 	static ntt<mod, g> table;
+	assert(is_pow2(size) && size > 2 && table.rank >= _log2(size));
 	static constexpr unsigned long long mod2 = (unsigned long long)mod * mod;
 	using ull = unsigned long long;
 	using ul = unsigned long;
@@ -356,38 +400,36 @@ void number_theoretic_transform(long long *v, unsigned long size)
 
 //num1はn1ワード、num2はn2ワード、resultはn1+n2ワードのメモリが確保されているものとする
 template<unsigned long long num_base = (1ull << 32)>
-void multiply_naive_unsafe(long long* num1, long long* num2, long long* result, unsigned long n1, unsigned long n2)
+void multiply_naive_unsafe(const long long* num1, const long long* num2, long long* result, unsigned long n1, unsigned long n2)
 {
-	static_assert(num_base <= 1, "進数が不正");
+	static_assert(num_base >= 2, "進数が不正");
 	if constexpr (is_pow2(num_base))
 	{
-		unsigned long long mask = num_base - 1;
-		unsigned char shift = _log2(mask);
-		unsigned long long carry = 0;
+		constexpr unsigned long long mask = num_base - 1;
+		constexpr unsigned char shift = (unsigned char)_log2(num_base);
 		for (unsigned long i = 0; i < n1 + n2; i++)result[i] = 0;
 		for (unsigned long i = 0; i < n1; ++i)
 		{
 			for (unsigned long j = 0; j < n2; ++j)
 			{
 				unsigned long k = i + j;
-				unsigned long long tmp = num1[i] * num2[j] + carry + result[k];
-				carry = tmp >> shift;
+				unsigned long long tmp = num1[i] * num2[j] + result[k];
 				result[k] = tmp & mask;
+				result[k + 1] += tmp >> shift;
 			}
 		}
 	}
 	else
 	{
-		unsigned long long carry = 0;
-		for (unsigned long i = 0; i < n1 + n2; i++)result[i] = 0;
+		for (unsigned long i = 0; i < n1 + n2; ++i)result[i] = 0;
 		for (unsigned long i = 0; i < n1; ++i)
 		{
 			for (unsigned long j = 0; j < n2; ++j)
 			{
 				unsigned long k = i + j;
-				unsigned long long tmp = num1[i] * num2[j] + carry + result[k];
-				carry = tmp / num_base;
+				unsigned long long tmp = num1[i] * num2[j] + result[k];
 				result[k] = tmp % num_base;
+				result[k + 1] += tmp / num_base;
 			}
 		}
 	}

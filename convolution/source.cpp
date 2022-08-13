@@ -70,16 +70,13 @@ int test5()
 int test6()
 {
 	using ubigintdec = ubigint<1000000000>;
-	ubigintdec a, b, c;
+	ubigintdec a, b;
 	a.random(10);
 	b.random(10);
-	c = a;
 	a.dump();
 	b.dump();
-	a.multiply_ntt(b);
-	c = c.multiply_naive(b);
+	a *= b;
 	a.dump();
-	c.dump();
 	return 0;
 }
 

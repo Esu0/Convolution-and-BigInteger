@@ -13,6 +13,7 @@
 #include<iomanip>
 #include<string.h>
 
+
 inline unsigned char ctoi_hex(char c)
 {
 	switch (c)
@@ -368,7 +369,7 @@ public:
 	}
 
 	//数論変換を使って掛け算
-	void multiply_ntt(const ubigint& num)
+	ubigint multiply_ntt(const ubigint& num)const&
 	{
 		static constexpr unsigned long ntt_mod1 = 2013265921;
 		static constexpr unsigned long ntt_mod2 = 1811939329;
@@ -405,7 +406,9 @@ public:
 
 			//ntt_mod1でntt
 			convolution_mod<ntt_mod1, g1>(buf1.data(), buf_num1.data(), result_size, new_size);
-			fix_carry_force();
+			ubigint<num_base> prod(std::move(buf1));
+			prod.fix_carry_force();
+			return prod;
 		}
 		else if (n < border2)
 		{
@@ -450,12 +453,14 @@ public:
 			convolution_mod<ntt_mod2, g2>(buf2.data(), buf_num1.data(), result_size, new_size);
 
 
-			dat.resize(result_size);
+			buf_num1.resize(result_size);
 			for (size_t i = 0; i < result_size; ++i)
 			{
-				dat[i] = _garner2<ntt_mod1, ntt_mod2>(buf1[i], buf2[i]);
+				buf_num1[i] = _garner2<ntt_mod1, ntt_mod2>(buf1[i], buf2[i]);
 			}
-			fix_carry_force();
+			ubigint<num_base> prod(std::move(buf_num1));
+			prod.fix_carry_force();
+			return prod;
 		}
 		else if (n < border3)
 		{
@@ -476,7 +481,7 @@ public:
 				long long tmp = num.dat[i] % (long long)ntt_mod1;
 				buf1[i] = tmp < 0 ? tmp + ntt_mod1 : tmp;
 			}
-
+			
 			//ntt_mod1で畳み込み
 			convolution_mod<ntt_mod1, g1>(buf1.data(), buf_num1.data(), result_size, new_size);
 
@@ -519,7 +524,7 @@ public:
 			//ntt_mod3で畳み込み
 			convolution_mod<ntt_mod3, g3>(buf3.data(), buf_num1.data(), result_size, new_size);
 			static constexpr unsigned char digit_size = _log_ceil<num_base>(1 << 25) + (unsigned char)2;
-			dat = std::vector<long long>((size_t)result_size + digit_size - 1, 0);
+			buf_num1 = std::vector<long long>((size_t)result_size + digit_size - 1, 0);
 
 			unsigned long long dig_1[digit_size] = {};
 			for (size_t i = 0; i < result_size; ++i)
@@ -527,24 +532,89 @@ public:
 				_garner3<num_base, ntt_mod1, ntt_mod2, ntt_mod3, digit_size>(buf1[i], buf2[i], buf3[i], dig_1);
 				for (size_t j = 0; j < digit_size; ++j)
 				{
-					dat[i + j] += dig_1[j];
+					buf_num1[i + j] += dig_1[j];
 				}
 			}
-			fix_carry_force();
+
+			ubigint<num_base> prod(std::move(buf_num1));
+			prod.fix_carry_force();
+			return prod;
 		}
 		else
 		{
 			throw std::out_of_range("掛け算失敗");
+			return ubigint<num_base>();
 		}
 	}
 
+	ubigint& operator*=(ubigint& _Right)
+	{
+		fix_carry_force();
+		_Right.fix_carry_force();
+		unsigned long long ntt_size = ceil_pow2(_Right.dat.size() + dat.size());
+		if (_Right.dat.size() * dat.size() < ntt_size * ((unsigned long long)_log2(ntt_size) * 3 + 1))
+		{
+			*this = multiply_naive(_Right);
+			delete_zero();
+		}
+		else
+		{
+			*this = multiply_ntt(_Right);
+		}
+		fix_carry_force();
+		return *this;
+	}
 
 	ubigint& operator*=(const ubigint& _Right)
 	{
 		fix_carry_force();
-		*this = multiply_naive(_Right);
+		ubigint buf(_Right);
+		buf.fix_carry_force();
+		unsigned long long ntt_size = ceil_pow2(buf.dat.size() + dat.size());
+		if (buf.dat.size() * dat.size() < ntt_size * ((unsigned long long)_log2(ntt_size) * 3 + 1))
+		{
+			*this = multiply_naive(buf);
+			delete_zero();
+		}
+		else
+		{
+			*this = multiply_ntt(buf);
+		}
 		fix_carry_force();
 		return *this;
+	}
+
+	ubigint operator*(const ubigint& _Right)const&
+	{
+		ubigint<num_base> buf(*this);
+		buf *= _Right;
+		return buf;
+	}
+	
+	ubigint operator*(ubigint& _Right)const&
+	{
+		ubigint<num_base> buf(*this);
+		buf *= _Right;
+		return buf;
+	}
+
+	ubigint operator*(ubigint& _Right)&
+	{
+		fix_carry_force();
+		_Right.fix_carry_force();
+		unsigned long long ntt_size = ceil_pow2(_Right.dat.size() + dat.size());
+		if (_Right.dat.size() * dat.size() < ntt_size * ((unsigned long long)_log2(ntt_size) * 3 + 1))
+		{
+			ubigint tmp = multiply_naive(_Right);
+			tmp.delete_zero();
+			return tmp;
+		}
+		else
+		{
+			ubigint tmp = multiply_ntt(_Right);
+			tmp.fix_carry_force();
+			return tmp;
+		}
 	}
 
 	void random(size_t digits)

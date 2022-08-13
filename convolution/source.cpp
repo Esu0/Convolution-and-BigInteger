@@ -3,21 +3,29 @@
 #include<vector>
 #include<ios>
 #include<iomanip>
-#include<convenience.h>
-#include<fourier_trans.h>
 #include"bigint.h"
+#include<chrono>
 
-using namespace convenient;
-using namespace instant;
+std::chrono::system_clock::time_point _Start_time, _End_time;
 
-int test1()
+void timer_start()
 {
-	std::vector<long long> a = { 3,2,14,1,3,4,1,4 };
-	number_theoretic_transform<17, 5>(a.data(), (unsigned long)a.size());
-	std::cout << to_string(a) << std::endl;
-	number_theoretic_transform<17, 5, true>(a.data(), (unsigned long)a.size());
-	std::cout << to_string(a) << std::endl;
-	return 0;
+	_Start_time = std::chrono::system_clock::now();
+}
+
+void timer_end()
+{
+	_End_time = std::chrono::system_clock::now();
+}
+
+long long timer_elapsed()
+{
+	return std::chrono::duration_cast<std::chrono::microseconds>(_End_time - _Start_time).count();
+}
+
+void timer_print()
+{
+	std::cout << "execution time: " << (double)timer_elapsed() / 1000 << "ms" << std::endl;
 }
 
 int test2()
@@ -37,17 +45,6 @@ int test3()
 	b.dump();
 	a *= b;
 	a.dump();
-	return 0;
-}
-
-int test4()
-{
-	std::vector<long long> a = {2,4,3,7,3};
-	std::vector<long long> b = { 3, 4, 4, 3 };
-	std::vector<long long> c(9);
-	multiply_naive_unsafe(a.data(), b.data(), c.data(), (unsigned long)a.size(), (unsigned long)b.size());
-	std::cout << to_string(c) << std::endl;
-	std::cout << std::hex << 0x37342ull * 0x3443 << std::endl;
 	return 0;
 }
 

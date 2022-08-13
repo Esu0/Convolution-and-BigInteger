@@ -57,11 +57,13 @@ int test5()
 	ubigintdec a, b;
 	a.random(20000);
 	b.random(20000);
+	a.dump("../results/result_a.txt", " ");
+	b.dump("../results/result_b.txt", " ");
 	timer_start();
 	a.multiply_ntt(b);
 	timer_end();
 	timer_print();
-	//a.dump();
+	a.dump("../results/result_ab.txt", " ");
 	return 0;
 }
 

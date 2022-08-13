@@ -8,6 +8,7 @@
 #include<iostream>
 #include<random>
 #include<stdexcept>
+#include<fstream>
 
 inline unsigned char ctoi_hex(char c)
 {
@@ -252,6 +253,18 @@ public:
 		std::cout << std::endl;
 	}
 
+	void dump(const char* fpath, const char* str)
+	{
+		fix_carry_force();
+		std::ofstream ofs(fpath);
+		for (size_t i = dat.size(); i > 0;)
+		{
+			--i;
+			ofs << dat[i] << str;
+		}
+		ofs << std::endl;
+	}
+
 	void dump(const char* str)
 	{
 		fix_carry_force();
@@ -357,7 +370,6 @@ public:
 		static constexpr unsigned long border2 = (unsigned long)((((unsigned long long)ntt_mod1 * ntt_mod2 + num_base - 2) / (num_base - 1) + num_base - 2) / (num_base - 1));
 		unsigned long result_size = (unsigned long)(dat.size() + num.dat.size());
 		unsigned long n = (unsigned long)(std::min)(dat.size(), num.dat.size());
-		std::cout << border2 << std::endl;
 		if (n < border1)
 		{
 			unsigned long new_size = (unsigned long)ceil_pow2(result_size);
@@ -469,6 +481,7 @@ public:
 			throw std::exception("border over.");
 		}
 	}
+
 	ubigint& operator*=(const ubigint& _Right)
 	{
 		fix_carry_force();

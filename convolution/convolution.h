@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 
 #ifndef _CONVOLUTION_H_
 #define _CONVOLUTION_H_
@@ -94,7 +94,7 @@ constexpr bool is_pow2(unsigned long long x)
 template<unsigned long long b>
 constexpr bool is_pow(unsigned long long x)
 {
-	static_assert(b >= 2, "w”‚Ì’ê‚ª•s³‚È’l");
+	static_assert(b >= 2, "æŒ‡æ•°ã®åº•ãŒä¸æ­£ãªå€¤");
 	while (x % b == 0)
 	{
 		x /= b;
@@ -103,14 +103,20 @@ constexpr bool is_pow(unsigned long long x)
 }
 
 template<unsigned long long b>
-constexpr unsigned char _log(unsigned long long x)
+constexpr unsigned char _log_floor(unsigned long long x)
 {
-	static_assert(b >= 2, "w”‚Ì’ê‚ª•s³‚È’l");
+	static_assert(b >= 2, "æŒ‡æ•°ã®åº•ãŒä¸æ­£ãªå€¤");
 	unsigned char count = 0;
 	while (x /= b)++count;
 	return count;
 }
 
+template<unsigned long long b>
+constexpr unsigned char _log_ceil(unsigned long long x)
+{
+	static_assert(b >= 2, "æŒ‡æ•°ã®åº•ãŒä¸æ­£ãªå€¤");
+	return x == 1 ? 0 : _log_floor<b>(x - 1) + 1;
+}
 constexpr unsigned long long ceil_pow2(unsigned long long x)
 {
 	--x;
@@ -211,7 +217,7 @@ unsigned long get_prim_root(unsigned long mod)
 	return candidate;
 }
 
-//a‚Æmod‚ÍŒİ‚¢‚É‘f
+//aã¨modã¯äº’ã„ã«ç´ 
 template<unsigned long mod>
 constexpr long long _minv(long long a)
 {
@@ -293,10 +299,10 @@ private:
 public:
 	static constexpr unsigned char rank = (unsigned char)bsf(mod - 1);
 
-	static_assert(rank >= 2, "rank‚Í2ˆÈã•K—v");
+	static_assert(rank >= 2, "rankã¯2ä»¥ä¸Šå¿…è¦");
 
-	//root[i] = 2^iæª
-	//root[i]‚ğ2^iæ‚·‚é‚Æ1‚É‚È‚é
+	//root[i] = 2^iä¹—æ ¹
+	//root[i]ã‚’2^iä¹—ã™ã‚‹ã¨1ã«ãªã‚‹
 	unsigned long root[rank + 1];
 	unsigned long root3[rank - 2];
 
@@ -328,10 +334,10 @@ public:
 };
 
 
-//§–ñ:g‚Ímod‚ÌŒ´nªAmod-1‚Í‘fˆö”‚É‚È‚é‚×‚­‚½‚­‚³‚ñ2‚ğŠÜ‚Ş
-//mod‚Í‘f”
-//v‚Í(size*8) byteˆÈã‚Ìƒƒ‚ƒŠ‚ªŠm•Û‚³‚ê‚Ä‚¢‚é
-//size > 2, size = 2^N‚Æ•\‚¹‚é
+//åˆ¶ç´„:gã¯modã®åŸå§‹æ ¹ã€mod-1ã¯ç´ å› æ•°ã«ãªã‚‹ã¹ããŸãã•ã‚“2ã‚’å«ã‚€
+//modã¯ç´ æ•°
+//vã¯(size*8) byteä»¥ä¸Šã®ãƒ¡ãƒ¢ãƒªãŒç¢ºä¿ã•ã‚Œã¦ã„ã‚‹
+//size > 2, size = 2^Nã¨è¡¨ã›ã‚‹
 template<unsigned long mod, unsigned long g, bool inv = false>
 void number_theoretic_transform(long long *v, unsigned long size)
 {
@@ -341,7 +347,7 @@ void number_theoretic_transform(long long *v, unsigned long size)
 	using ull = unsigned long long;
 	using ul = unsigned long;
 	using stype = unsigned long;
-	//‹t•ÏŠ·
+	//é€†å¤‰æ›
 	if constexpr (inv)
 	{
 		stype n = size;
@@ -394,7 +400,7 @@ void number_theoretic_transform(long long *v, unsigned long size)
 			order -= 2;
 		}
 	}
-	//³•ÏŠ·
+	//æ­£å¤‰æ›
 	else
 	{
 		stype n = size;
@@ -466,16 +472,16 @@ void convolution_mod(long long* a, long long* b, unsigned long size, unsigned lo
 }
 
 
-//num1‚Ín1ƒ[ƒhAnum2‚Ín2ƒ[ƒhAresult‚Ín1+n2ƒ[ƒh‚Ìƒƒ‚ƒŠ‚ªŠm•Û‚³‚ê‚Ä‚¢‚é‚à‚Ì‚Æ‚·‚é
+//num1ã¯n1ãƒ¯ãƒ¼ãƒ‰ã€num2ã¯n2ãƒ¯ãƒ¼ãƒ‰ã€resultã¯n1+n2ãƒ¯ãƒ¼ãƒ‰ã®ãƒ¡ãƒ¢ãƒªãŒç¢ºä¿ã•ã‚Œã¦ã„ã‚‹ã‚‚ã®ã¨ã™ã‚‹
 template<unsigned long long num_base = (1ull << 32)>
 void multiply_naive_unsafe(const long long* num1, const long long* num2, long long* result, unsigned long n1, unsigned long n2)
 {
-	static_assert(num_base >= 2, "i”‚ª•s³");
+	static_assert(num_base >= 2, "é€²æ•°ãŒä¸æ­£");
 	if constexpr (is_pow2(num_base))
 	{
 		constexpr unsigned long long mask = num_base - 1;
 		constexpr unsigned char shift = (unsigned char)_log2(num_base);
-		for (unsigned long i = 0; i < n1 + n2; i++)result[i] = 0;
+		for (unsigned long i = 0; i < n1 + n2; ++i)result[i] = 0;
 		for (unsigned long i = 0; i < n1; ++i)
 		{
 			for (unsigned long j = 0; j < n2; ++j)

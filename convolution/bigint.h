@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 
 #ifndef _BIGINT_H_
 #define _BIGINT_H_
@@ -11,6 +11,7 @@
 #include<fstream>
 #include<ios>
 #include<iomanip>
+#include<string.h>
 
 inline unsigned char ctoi_hex(char c)
 {
@@ -54,7 +55,7 @@ inline unsigned char ctoi_dec(char c)
 template<unsigned long long num_base>
 class ubigint
 {
-	static_assert(num_base >= 2, "i”‚ª•s³");
+	static_assert(num_base >= 2, "é€²æ•°ãŒä¸æ­£");
 private:
 	std::vector<long long> dat;
 	long long max = num_base;
@@ -132,7 +133,7 @@ public:
 		dat = std::move(ubigint::dec(str).dat);
 	}
 
-	//Šî”•ÏŠ·16->”CˆÓ
+	//åŸºæ•°å¤‰æ›16->ä»»æ„
 	static ubigint<num_base> hex(const char* str)
 	{
 		if constexpr (is_pow2(num_base))
@@ -176,7 +177,7 @@ public:
 		}
 	}
 
-	//Šî”•ÏŠ·10->”CˆÓ
+	//åŸºæ•°å¤‰æ›10->ä»»æ„
 	static ubigint<num_base> dec(const char* str)
 	{
 		if constexpr (is_pow<10>(num_base))
@@ -220,15 +221,15 @@ public:
 		}
 	}
 
-	//ƒRƒs[‘ã“üƒRƒ“ƒXƒgƒ‰ƒNƒ^
+	//ã‚³ãƒ”ãƒ¼ä»£å…¥ã‚³ãƒ³ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
 	ubigint(const ubigint& _Right): dat(_Right.dat), max(_Right.max)
 	{}
 
-	//ƒ€[ƒu‘ã“üƒRƒ“ƒXƒgƒ‰ƒNƒ^
+	//ãƒ ãƒ¼ãƒ–ä»£å…¥ã‚³ãƒ³ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
 	ubigint(ubigint&& _Right)noexcept : dat(std::move(_Right.dat)), max(_Right.max)
 	{}
 
-	//ƒRƒs[‘ã“ü‰‰Zq
+	//ã‚³ãƒ”ãƒ¼ä»£å…¥æ¼”ç®—å­
 	ubigint& operator=(const ubigint& _Right)
 	{
 		dat = _Right.dat;
@@ -236,7 +237,7 @@ public:
 		return *this;
 	}
 
-	//ƒ€[ƒu‘ã“ü‰‰Zq
+	//ãƒ ãƒ¼ãƒ–ä»£å…¥æ¼”ç®—å­
 	ubigint& operator=(ubigint&& _Right)noexcept
 	{
 		dat = std::move(_Right.dat);
@@ -278,7 +279,7 @@ public:
 		std::cout << std::endl;
 	}
 
-	//‘O’uƒCƒ“ƒNƒŠƒƒ“ƒg
+	//å‰ç½®ã‚¤ãƒ³ã‚¯ãƒªãƒ¡ãƒ³ãƒˆ
 	ubigint& operator++()
 	{
 		++dat[0];
@@ -287,7 +288,7 @@ public:
 		return *this;
 	}
 
-	//Œã’uƒCƒ“ƒNƒŠƒƒ“ƒg
+	//å¾Œç½®ã‚¤ãƒ³ã‚¯ãƒªãƒ¡ãƒ³ãƒˆ
 	ubigint operator++(int)
 	{
 		ubigint<num_base> tmp = *this;
@@ -295,7 +296,7 @@ public:
 		return tmp;
 	}
 
-	//‘O’uƒfƒNƒŠƒƒ“ƒg
+	//å‰ç½®ãƒ‡ã‚¯ãƒªãƒ¡ãƒ³ãƒˆ
 	ubigint& operator--()
 	{
 		--dat[0];
@@ -304,7 +305,7 @@ public:
 		return *this;
 	}
 
-	//Œã’uƒfƒNƒŠƒƒ“ƒg
+	//å¾Œç½®ãƒ‡ã‚¯ãƒªãƒ¡ãƒ³ãƒˆ
 	ubigint operator--(int)
 	{
 		ubigint<num_base> tmp = *this;
@@ -312,7 +313,7 @@ public:
 		return tmp;
 	}
 
-	//•¡‡‘ã“ü(‘«‚µZ)
+	//è¤‡åˆä»£å…¥(è¶³ã—ç®—)
 	ubigint& operator+=(const ubigint& _Right)
 	{
 		if (_Right.dat.size() > dat.size())dat.resize(_Right.dat.size(), 0);
@@ -322,7 +323,7 @@ public:
 		return *this;
 	}
 
-	//‘«‚µZ
+	//è¶³ã—ç®—
 	[[nodiscard]]
 	ubigint operator+(ubigint _Right)const&
 	{
@@ -330,7 +331,7 @@ public:
 		return _Right;
 	}
 
-	//•¡‡‘ã“ü(ˆø‚«Z)
+	//è¤‡åˆä»£å…¥(å¼•ãç®—)
 	ubigint& operator-=(const ubigint& _Right)
 	{
 		if (_Right.dat.size() > dat.size())dat.resize(_Right.dat.size(), 0);
@@ -349,7 +350,7 @@ public:
 		_Right.fix_carry();
 	}
 
-	//ˆø‚«Z
+	//å¼•ãç®—
 	[[nodiscard]]
 	ubigint operator-(ubigint _Right)const&
 	{
@@ -357,16 +358,16 @@ public:
 		return _Right;
 	}
 
-	//•’Ê‚ÉŠ|‚¯Z
+	//æ™®é€šã«æ›ã‘ç®—
 	[[nodiscard]]
-	ubigint multiply_naive(const ubigint& num1, const ubigint& num2)
+	ubigint multiply_naive(const ubigint& num)const&
 	{
-		std::vector<long long> resultv(num1.dat.size() + num2.dat.size());
-		multiply_naive_unsafe<num_base>(num1.dat.data(), num2.dat.data(), resultv.data(), (unsigned long)num1.dat.size(), (unsigned long)num2.dat.size());
+		std::vector<long long> resultv(dat.size() + num.dat.size());
+		multiply_naive_unsafe<num_base>(dat.data(), num.dat.data(), resultv.data(), (unsigned long)dat.size(), (unsigned long)num.dat.size());
 		return ubigint(std::move(resultv));
 	}
 
-	//”˜_•ÏŠ·‚ğg‚Á‚ÄŠ|‚¯Z
+	//æ•°è«–å¤‰æ›ã‚’ä½¿ã£ã¦æ›ã‘ç®—
 	void multiply_ntt(const ubigint& num)
 	{
 		static constexpr unsigned long ntt_mod1 = 2013265921;
@@ -390,7 +391,7 @@ public:
 			std::vector<long long> buf1(new_size);
 			std::vector<long long> buf_num1(new_size);
 
-			//ƒRƒs[1‰ñ–Ú
+			//ã‚³ãƒ”ãƒ¼1å›ç›®
 			for (size_t i = 0; i < dat.size(); ++i)
 			{
 				long long tmp = dat[i] % (long long)ntt_mod1;
@@ -402,7 +403,7 @@ public:
 				buf1[i] = tmp < 0 ? tmp + ntt_mod1 : tmp;
 			}
 
-			//ntt_mod1‚Åntt
+			//ntt_mod1ã§ntt
 			convolution_mod<ntt_mod1, g1>(buf1.data(), buf_num1.data(), result_size, new_size);
 			fix_carry_force();
 		}
@@ -413,7 +414,7 @@ public:
 			std::vector<long long> buf_num1(new_size);
 			std::vector<long long> buf2(new_size);
 
-			//ƒRƒs[1‰ñ–Ú
+			//ã‚³ãƒ”ãƒ¼1å›ç›®
 			for (size_t i = 0; i < dat.size(); ++i)
 			{
 				long long tmp = dat[i] % (long long)ntt_mod1;
@@ -425,10 +426,10 @@ public:
 				buf1[i] = tmp < 0 ? tmp + ntt_mod1 : tmp;
 			}
 
-			//ntt_mod1‚Åntt
+			//ntt_mod1ã§ntt
 			convolution_mod<ntt_mod1, g1>(buf1.data(), buf_num1.data(), result_size, new_size);
 
-			//ƒRƒs[2‰ñ–Ú
+			//ã‚³ãƒ”ãƒ¼2å›ç›®
 			size_t j;
 			for (j = 0; j < dat.size(); ++j)
 			{
@@ -445,7 +446,7 @@ public:
 				buf2[j] = tmp < 0 ? tmp + ntt_mod2 : tmp;
 			}
 
-			//ntt_mod2‚Åntt
+			//ntt_mod2ã§ntt
 			convolution_mod<ntt_mod2, g2>(buf2.data(), buf_num1.data(), result_size, new_size);
 
 
@@ -464,7 +465,7 @@ public:
 			std::vector<long long> buf2(new_size);
 			std::vector<long long> buf3(new_size);
 
-			//ƒRƒs[1‰ñ–Ú
+			//ã‚³ãƒ”ãƒ¼1å›ç›®
 			for (size_t i = 0; i < dat.size(); ++i)
 			{
 				long long tmp = dat[i] % (long long)ntt_mod1;
@@ -476,10 +477,10 @@ public:
 				buf1[i] = tmp < 0 ? tmp + ntt_mod1 : tmp;
 			}
 
-			//ntt_mod1‚Åô‚İ‚İ
+			//ntt_mod1ã§ç•³ã¿è¾¼ã¿
 			convolution_mod<ntt_mod1, g1>(buf1.data(), buf_num1.data(), result_size, new_size);
 
-			//ƒRƒs[2‰ñ–Ú
+			//ã‚³ãƒ”ãƒ¼2å›ç›®
 			size_t j;
 			for (j = 0; j < dat.size(); ++j)
 			{
@@ -496,10 +497,10 @@ public:
 				buf2[j] = tmp < 0 ? tmp + ntt_mod2 : tmp;
 			}
 
-			//ntt_mod2‚Åô‚İ‚İ
+			//ntt_mod2ã§ç•³ã¿è¾¼ã¿
 			convolution_mod<ntt_mod2, g2>(buf2.data(), buf_num1.data(), result_size, new_size);
 
-			//ƒRƒs[3‰ñ–Ú
+			//ã‚³ãƒ”ãƒ¼3å›ç›®
 			for (j = 0; j < dat.size(); ++j)
 			{
 				long long tmp = dat[j] % (long long)ntt_mod3;
@@ -515,9 +516,9 @@ public:
 				buf3[j] = tmp < 0 ? tmp + ntt_mod2 : tmp;
 			}
 
-			//ntt_mod3‚Åô‚İ‚İ
+			//ntt_mod3ã§ç•³ã¿è¾¼ã¿
 			convolution_mod<ntt_mod3, g3>(buf3.data(), buf_num1.data(), result_size, new_size);
-			static constexpr unsigned char digit_size = _log<num_base>(1 << 25) + (unsigned char)2;
+			static constexpr unsigned char digit_size = _log_ceil<num_base>(1 << 25) + (unsigned char)2;
 			dat = std::vector<long long>((size_t)result_size + digit_size - 1, 0);
 
 			unsigned long long dig_1[digit_size] = {};
@@ -533,7 +534,7 @@ public:
 		}
 		else
 		{
-			throw std::exception("Š|‚¯Z•s‰Â”\");
+			throw std::out_of_range("æ›ã‘ç®—å¤±æ•—");
 		}
 	}
 
@@ -541,7 +542,7 @@ public:
 	ubigint& operator*=(const ubigint& _Right)
 	{
 		fix_carry_force();
-		*this = multiply_naive(*this, _Right);
+		*this = multiply_naive(_Right);
 		fix_carry_force();
 		return *this;
 	}

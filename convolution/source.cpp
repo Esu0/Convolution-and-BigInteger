@@ -1,4 +1,4 @@
-#include"convolution.h"
+﻿#include"convolution.h"
 #include<iostream>
 #include<vector>
 #include<ios>
@@ -53,10 +53,10 @@ int test4()
 
 int test5()
 {
-	using ubigintdec = ubigint<100000>;
+	using ubigintdec = ubigint<1ull << 32>;
 	ubigintdec a, b;
-	a.random(2000000);
-	b.random(2000000);
+	a.random(200000);
+	b.random(200000);
 	a.dump("../results/result_a.txt", " ");
 	b.dump("../results/result_b.txt", " ");
 	timer_start();
@@ -69,18 +69,21 @@ int test5()
 
 int test6()
 {
-	using ubigintdec = ubigint<10000000000>;
-	ubigintdec a, b;
-	a.random(5);
-	b.random(5);
+	using ubigintdec = ubigint<1000000000>;
+	ubigintdec a, b, c;
+	a.random(10);
+	b.random(10);
+	c = a;
 	a.dump();
 	b.dump();
 	a.multiply_ntt(b);
+	c = c.multiply_naive(b);
 	a.dump();
+	c.dump();
 	return 0;
 }
 
 int main()
 {
-	return test5();
+	return test6();
 }

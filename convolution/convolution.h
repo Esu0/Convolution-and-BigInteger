@@ -102,6 +102,15 @@ constexpr bool is_pow(unsigned long long x)
 	return x == 1;
 }
 
+template<unsigned long long b>
+constexpr unsigned char _log(unsigned long long x)
+{
+	static_assert(b >= 2, "指数の底が不正な値");
+	unsigned char count = 0;
+	while (x /= b)++count;
+	return count;
+}
+
 constexpr unsigned long long ceil_pow2(unsigned long long x)
 {
 	--x;
@@ -233,6 +242,48 @@ long long _garner2(long long r1, long long r2)
 	return r1;
 }
 
+template<unsigned long long num_base, unsigned long mod1, unsigned long mod2, unsigned long mod3, unsigned char result_size>
+void _garner3(long long r1, long long r2, long long r3, unsigned long long result[result_size])
+{
+	static constexpr unsigned long m1_inv = (unsigned long)_minv<mod2>(mod1);
+	static constexpr unsigned long long m1m2 = (unsigned long long)mod1 * mod2;
+	static constexpr unsigned long m1m2_inv = (unsigned long)_minv<mod3>((unsigned long)(m1m2 % mod3));
+	static constexpr unsigned long long m1m2_div0 = m1m2 % num_base;
+	static constexpr unsigned long long m1m2_div1 = (m1m2 / num_base) % num_base;
+	static constexpr unsigned long long m1m2_div2 = (m1m2 / num_base / num_base) % num_base;
+	static constexpr unsigned long long m1m2_div3 = m1m2 / num_base / num_base / num_base;
+
+	long long t1 = (r2 - r1) * m1_inv % (long long)mod2;
+	if (t1 < 0)t1 += mod2;
+
+	long long t2 = (r3 - r1 - (long long)((unsigned long long)t1 * mod1 % mod3)) * m1m2_inv % (long long)mod3;
+	if (t2 < 0)t2 += mod3;
+
+	long long x12 = r1 + t1 * mod1;
+
+	unsigned long long carry = 0;
+	unsigned long long tmp = m1m2_div0 * t2 + x12;
+	result[0] = tmp % num_base;
+	carry = tmp / num_base;
+	if constexpr (result_size > 1)
+	{
+		tmp = m1m2_div1 * t2 + carry;
+		result[1] = tmp % num_base;
+		carry = tmp / num_base;
+		if constexpr (result_size > 2)
+		{
+			tmp = m1m2_div2 * t2 + carry;
+			result[2] = tmp % num_base;
+			carry = tmp / num_base;
+			if constexpr (result_size > 3)
+			{
+				tmp = m1m2_div3 * t2 + carry;
+				result[3] = tmp % num_base;
+				carry = tmp / num_base;
+			}
+		}
+	}
+}
 template<unsigned long mod, unsigned long g>
 class ntt
 {
@@ -281,7 +332,7 @@ public:
 //modは素数
 //vは(size*8) byte以上のメモリが確保されている
 //size > 2, size = 2^Nと表せる
-template<unsigned mod, unsigned long g, bool inv = false>
+template<unsigned long mod, unsigned long g, bool inv = false>
 void number_theoretic_transform(long long *v, unsigned long size)
 {
 	static ntt<mod, g> table;
@@ -394,6 +445,23 @@ void number_theoretic_transform(long long *v, unsigned long size)
 				w = (ul)((ull)w * table.root3[bsf_fast(~(i >> 2))] % mod);
 			}
 		}
+	}
+}
+
+template<unsigned long mod, unsigned long g>
+void convolution_mod(long long* a, long long* b, unsigned long size, unsigned long ntt_size)
+{
+	number_theoretic_transform<mod, g>(a, ntt_size);
+	number_theoretic_transform<mod, g>(b, ntt_size);
+	for (unsigned long i = 0; i < ntt_size; ++i)
+	{
+		a[i] = a[i] * b[i] % mod;
+	}
+	number_theoretic_transform<mod, g, true>(a, ntt_size);
+	long long inv_size = _minv<mod>(ntt_size);
+	for (unsigned long i = 0; i < size; ++i)
+	{
+		a[i] = a[i] * inv_size % mod;
 	}
 }
 

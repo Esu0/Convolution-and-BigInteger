@@ -55,8 +55,8 @@ int test5()
 {
 	using ubigintdec = ubigint<100000>;
 	ubigintdec a, b;
-	a.random(20000);
-	b.random(20000);
+	a.random(2000000);
+	b.random(2000000);
 	a.dump("../results/result_a.txt", " ");
 	b.dump("../results/result_b.txt", " ");
 	timer_start();
@@ -69,10 +69,10 @@ int test5()
 
 int test6()
 {
-	using ubigintdec = ubigint<100000>;
+	using ubigintdec = ubigint<10000000000>;
 	ubigintdec a, b;
-	a.random(20);
-	b.random(20);
+	a.random(5);
+	b.random(5);
 	a.dump();
 	b.dump();
 	a.multiply_ntt(b);

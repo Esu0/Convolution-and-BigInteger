@@ -9,6 +9,8 @@
 #include<random>
 #include<stdexcept>
 #include<fstream>
+#include<ios>
+#include<iomanip>
 
 inline unsigned char ctoi_hex(char c)
 {
@@ -275,6 +277,7 @@ public:
 		}
 		std::cout << std::endl;
 	}
+
 	//前置インクリメント
 	ubigint& operator++()
 	{
@@ -354,6 +357,8 @@ public:
 		return _Right;
 	}
 
+	//普通に掛け算
+	[[nodiscard]]
 	ubigint multiply_naive(const ubigint& num1, const ubigint& num2)
 	{
 		std::vector<long long> resultv(num1.dat.size() + num2.dat.size());
@@ -361,13 +366,22 @@ public:
 		return ubigint(std::move(resultv));
 	}
 
-
+	//数論変換を使って掛け算
 	void multiply_ntt(const ubigint& num)
 	{
 		static constexpr unsigned long ntt_mod1 = 2013265921;
 		static constexpr unsigned long ntt_mod2 = 1811939329;
-		static constexpr unsigned long border1 = ((ntt_mod1 + num_base - 2) / (num_base - 1) + num_base - 2) / (num_base - 1);
-		static constexpr unsigned long border2 = (unsigned long)((((unsigned long long)ntt_mod1 * ntt_mod2 + num_base - 2) / (num_base - 1) + num_base - 2) / (num_base - 1));
+		static constexpr unsigned long ntt_mod3 = 469762049;
+		static constexpr unsigned long g1 = 31;
+		static constexpr unsigned long g2 = 13;
+		static constexpr unsigned long g3 = 3;
+		static constexpr unsigned long long m1m2 = (unsigned long long)ntt_mod1 * ntt_mod2;
+		static constexpr unsigned long border1 = (ntt_mod1 - 1) / (num_base - 1) / (num_base - 1) + 1;
+		static constexpr unsigned long border2 = (unsigned long)((m1m2 - 1) / (num_base - 1) / (num_base - 1) + 1);
+		static constexpr unsigned long long m1m2_div0 = m1m2 % (num_base - 1);
+		static constexpr unsigned long long m1m2_div1 = (m1m2 / (num_base - 1)) % (num_base - 1);
+		static constexpr unsigned long long m1m2_div2 = m1m2 / (num_base - 1) / (num_base - 1);
+		static constexpr unsigned long long border3 = (m1m2_div2 / (num_base - 1) == 0) ? (m1m2_div2 * ntt_mod3 + m1m2_div1 * ntt_mod3 / (num_base - 1) + m1m2_div0 * ntt_mod3 / (num_base - 1) / (num_base - 1) + 1) : ULLONG_MAX;
 		unsigned long result_size = (unsigned long)(dat.size() + num.dat.size());
 		unsigned long n = (unsigned long)(std::min)(dat.size(), num.dat.size());
 		if (n < border1)
@@ -389,19 +403,7 @@ public:
 			}
 
 			//ntt_mod1でntt
-			number_theoretic_transform<ntt_mod1, 137>(buf_num1.data(), new_size);
-			number_theoretic_transform<ntt_mod1, 137>(buf1.data(), new_size);
-			for (size_t i = 0; i < new_size; ++i)
-			{
-				buf1[i] = buf1[i] * buf_num1[i] % ntt_mod1;
-			}
-			number_theoretic_transform<ntt_mod1, 137, true>(buf1.data(), new_size);
-			long long inv_size = _minv<ntt_mod1>(new_size);
-			dat.resize(result_size);
-			for (size_t i = 0; i < result_size; ++i)
-			{
-				dat[i] = buf1[i] * inv_size % ntt_mod1;
-			}
+			convolution_mod<ntt_mod1, g1>(buf1.data(), buf_num1.data(), result_size, new_size);
 			fix_carry_force();
 		}
 		else if (n < border2)
@@ -424,21 +426,8 @@ public:
 			}
 
 			//ntt_mod1でntt
-			number_theoretic_transform<ntt_mod1, 137>(buf_num1.data(), new_size);
-			number_theoretic_transform<ntt_mod1, 137>(buf1.data(), new_size);
-			for (size_t i = 0; i < new_size; ++i)
-			{
-				buf1[i] = buf1[i] * buf_num1[i] % ntt_mod1;
-			}
-			number_theoretic_transform<ntt_mod1, 137, true>(buf1.data(), new_size);
-			long long inv_size1 = _minv<ntt_mod1>(new_size);
-			buf1.resize(result_size);
-			for (size_t i = 0; i < result_size; ++i)
-			{
-				buf1[i] = buf1[i] * inv_size1 % ntt_mod1;
-			}
+			convolution_mod<ntt_mod1, g1>(buf1.data(), buf_num1.data(), result_size, new_size);
 
-			
 			//コピー2回目
 			size_t j;
 			for (j = 0; j < dat.size(); ++j)
@@ -455,20 +444,11 @@ public:
 				long long tmp = num.dat[j] % (long long)ntt_mod2;
 				buf2[j] = tmp < 0 ? tmp + ntt_mod2 : tmp;
 			}
+
 			//ntt_mod2でntt
-			number_theoretic_transform<ntt_mod2, 136>(buf_num1.data(), new_size);
-			number_theoretic_transform<ntt_mod2, 136>(buf2.data(), new_size);
-			for (size_t i = 0; i < new_size; ++i)
-			{
-				buf2[i] = buf2[i] * buf_num1[i] % ntt_mod2;
-			}
-			number_theoretic_transform<ntt_mod2, 136, true>(buf2.data(), new_size);
-			long long inv_size2 = _minv<ntt_mod2>(new_size);
-			buf2.resize(result_size);
-			for (size_t i = 0; i < result_size; ++i)
-			{
-				buf2[i] = buf2[i] * inv_size2 % ntt_mod2;
-			}
+			convolution_mod<ntt_mod2, g2>(buf2.data(), buf_num1.data(), result_size, new_size);
+
+
 			dat.resize(result_size);
 			for (size_t i = 0; i < result_size; ++i)
 			{
@@ -476,11 +456,87 @@ public:
 			}
 			fix_carry_force();
 		}
+		else if (n < border3)
+		{
+			unsigned long new_size = (unsigned long)ceil_pow2(result_size);
+			std::vector<long long> buf1(new_size);
+			std::vector<long long> buf_num1(new_size);
+			std::vector<long long> buf2(new_size);
+			std::vector<long long> buf3(new_size);
+
+			//コピー1回目
+			for (size_t i = 0; i < dat.size(); ++i)
+			{
+				long long tmp = dat[i] % (long long)ntt_mod1;
+				buf_num1[i] = tmp < 0 ? tmp + ntt_mod1 : tmp;
+			}
+			for (size_t i = 0; i < num.dat.size(); ++i)
+			{
+				long long tmp = num.dat[i] % (long long)ntt_mod1;
+				buf1[i] = tmp < 0 ? tmp + ntt_mod1 : tmp;
+			}
+
+			//ntt_mod1で畳み込み
+			convolution_mod<ntt_mod1, g1>(buf1.data(), buf_num1.data(), result_size, new_size);
+
+			//コピー2回目
+			size_t j;
+			for (j = 0; j < dat.size(); ++j)
+			{
+				long long tmp = dat[j] % (long long)ntt_mod2;
+				buf_num1[j] = tmp < 0 ? tmp + ntt_mod2 : tmp;
+			}
+			for (; j < new_size; ++j)
+			{
+				buf_num1[j] = 0;
+			}
+			for (j = 0; j < num.dat.size(); ++j)
+			{
+				long long tmp = num.dat[j] % (long long)ntt_mod2;
+				buf2[j] = tmp < 0 ? tmp + ntt_mod2 : tmp;
+			}
+
+			//ntt_mod2で畳み込み
+			convolution_mod<ntt_mod2, g2>(buf2.data(), buf_num1.data(), result_size, new_size);
+
+			//コピー3回目
+			for (j = 0; j < dat.size(); ++j)
+			{
+				long long tmp = dat[j] % (long long)ntt_mod3;
+				buf_num1[j] = tmp < 0 ? tmp + ntt_mod3 : tmp;
+			}
+			for (; j < new_size; ++j)
+			{
+				buf_num1[j] = 0;
+			}
+			for (j = 0; j < num.dat.size(); ++j)
+			{
+				long long tmp = num.dat[j] % (long long)ntt_mod3;
+				buf3[j] = tmp < 0 ? tmp + ntt_mod2 : tmp;
+			}
+
+			//ntt_mod3で畳み込み
+			convolution_mod<ntt_mod3, g3>(buf3.data(), buf_num1.data(), result_size, new_size);
+			static constexpr unsigned char digit_size = _log<num_base>(1 << 25) + (unsigned char)2;
+			dat = std::vector<long long>((size_t)result_size + digit_size - 1, 0);
+
+			unsigned long long dig_1[digit_size] = {};
+			for (size_t i = 0; i < result_size; ++i)
+			{
+				_garner3<num_base, ntt_mod1, ntt_mod2, ntt_mod3, digit_size>(buf1[i], buf2[i], buf3[i], dig_1);
+				for (size_t j = 0; j < digit_size; ++j)
+				{
+					dat[i + j] += dig_1[j];
+				}
+			}
+			fix_carry_force();
+		}
 		else
 		{
-			throw std::exception("border over.");
+			throw std::exception("掛け算不可能");
 		}
 	}
+
 
 	ubigint& operator*=(const ubigint& _Right)
 	{

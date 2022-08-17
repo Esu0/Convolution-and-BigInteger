@@ -52,32 +52,46 @@ int test5()
 {
 	using ubigintdec = ubigint<1ull << 32>;
 	ubigintdec a, b;
-	a.random(200000);
-	b.random(200000);
-	a.dump("../results/result_a.txt", " ");
-	b.dump("../results/result_b.txt", " ");
+	a.random(1000000);
+	b.random(1000000);
+	//a.dump("../results/result_a.txt", " ");
+	//b.dump("../results/result_b.txt", " ");
 	timer_start();
-	a.multiply_ntt(b);
+	a = a.multiply_ntt(b);
 	timer_end();
 	timer_print();
-	a.dump("../results/result_ab.txt", " ");
+	//a.dump("../results/result_ab.txt", " ");
 	return 0;
 }
 
 int test6()
 {
-	using ubigintdec = ubigint<1000000000>;
+	using ubigintdec = ubigint<10000000000>;
 	ubigintdec a, b;
 	a.random(10);
-	b.random(10);
+	b = -2323438937123;
 	a.dump();
 	b.dump();
-	a *= b;
-	a.dump();
+	a.multiply_naive(b).dump();
+	a.multiply_ntt(b).dump();
+	//a.dump();
 	return 0;
 }
 
+int test7()
+{
+	using bigint = ubigint<100000>;
+	bigint a, b;
+	a.random(5);
+	b.random(5);
+	a.dump();
+	b.dump();
+	if (a == a)std::cout << "a == a" << std::endl;
+	if (a == b)std::cout << "a == b" << std::endl;
+	if (a != b)std::cout << "a != b" << std::endl;
+	return 0;
+}
 int main()
 {
-	return test6();
+	return test5();
 }

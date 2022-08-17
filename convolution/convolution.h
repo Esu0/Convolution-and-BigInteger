@@ -6,6 +6,7 @@
 #include<random>
 #include<vector>
 #include<cassert>
+#include<thread>
 
 #ifdef _MSC_VER
 #include<intrin.h>
@@ -454,11 +455,21 @@ void number_theoretic_transform(long long *v, unsigned long size)
 	}
 }
 
-template<unsigned long mod, unsigned long g>
+template<unsigned long mod, unsigned long g, bool multi_thread = false>
 void convolution_mod(long long* a, long long* b, unsigned long size, unsigned long ntt_size)
 {
-	number_theoretic_transform<mod, g>(a, ntt_size);
-	number_theoretic_transform<mod, g>(b, ntt_size);
+	if constexpr (multi_thread)
+	{
+		std::thread th1([&]() {number_theoretic_transform<mod, g>(a, ntt_size); });
+		std::thread th2([&]() {number_theoretic_transform<mod, g>(b, ntt_size); });
+		th1.join();
+		th2.join();
+	}
+	else
+	{
+		number_theoretic_transform<mod, g>(a, ntt_size);
+		number_theoretic_transform<mod, g>(b, ntt_size);
+	}
 	for (unsigned long i = 0; i < ntt_size; ++i)
 	{
 		a[i] = a[i] * b[i] % mod;
@@ -477,19 +488,32 @@ template<unsigned long long num_base = (1ull << 32)>
 void multiply_naive_unsafe(const long long* num1, const long long* num2, long long* result, unsigned long n1, unsigned long n2)
 {
 	static_assert(num_base >= 2, "進数が不正");
-	if constexpr (is_pow2(num_base))
+
+	if constexpr (num_base > 0x0000000100000000ull)
 	{
-		constexpr unsigned long long mask = num_base - 1;
-		constexpr unsigned char shift = (unsigned char)_log2(num_base);
+		static constexpr unsigned long long R = (unsigned long long)(-(long long)num_base) % num_base;
+		static constexpr unsigned long long A = (unsigned long long)(-(long long)num_base) / num_base + 1;
 		for (unsigned long i = 0; i < n1 + n2; ++i)result[i] = 0;
 		for (unsigned long i = 0; i < n1; ++i)
 		{
 			for (unsigned long j = 0; j < n2; ++j)
 			{
 				unsigned long k = i + j;
-				unsigned long long tmp = num1[i] * num2[j] + result[k];
-				result[k] = tmp & mask;
-				result[k + 1] += tmp >> shift;
+				unsigned long long a = num1[i] >> 32, b = num1[i] & 0xffffffffll;
+				unsigned long long c = num2[j] >> 32, d = num2[j] & 0xffffffffll;
+				unsigned long long a0 = b * d + (result[k] & 0xffffffffull), a1 = a * d + b * c + (result[k] >> 32), a2 = a * c;
+				a1 += a0 >> 32;
+				a0 &= 0xffffffffull;
+				a2 += a1 >> 32;
+				a1 &= 0xffffffffull;
+				a0 |= a1 << 32;
+				a1 = a2 * A + a0 / num_base;
+				a0 %= num_base;
+				a0 += a2 * R;
+				a1 += a0 / num_base;
+				a0 %= num_base;
+				result[k] = a0;
+				result[k + 1] += a1;
 			}
 		}
 	}

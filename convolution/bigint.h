@@ -1,8 +1,5 @@
 ﻿#pragma once
 
-#ifndef _BIGINT_H_
-#define _BIGINT_H_
-
 #include"convolution.h"
 #include<string>
 #include<iostream>
@@ -53,13 +50,15 @@ inline unsigned char ctoi_dec(char c)
 	return c - '0';
 }
 
-template<unsigned long long num_base>
+template<unsigned long long num_base, bool multi_thread = false>
 class ubigint
 {
 	static_assert(num_base >= 2, "進数が不正");
+	static_assert(num_base <= 1ull << 60, "進数が大きすぎる");
 private:
 	std::vector<long long> dat;
 	long long max = num_base;
+	bool carry_fixed = true;
 
 	void delete_zero()
 	{
@@ -101,6 +100,7 @@ private:
 		}
 		delete_zero();
 		max = num_base;
+		carry_fixed = true;
 	}
 
 	void fix_carry()
@@ -110,6 +110,30 @@ private:
 
 	explicit ubigint(std::vector<long long>&& v) :dat(v)
 	{}
+
+	bool equal(const ubigint& _Right)const&
+	{
+		if (dat.size() != _Right.dat.size())return false;
+		for (size_t i = 0; i < dat.size(); ++i)
+		{
+			if (dat[i] != _Right.dat[i])return false;
+		}
+		return true;
+	}
+
+	bool greater(const ubigint& _Right)const&
+	{
+		if (dat.size() > _Right.dat.size())return true;
+		if (dat.size() < _Right.dat.size())return false;
+		for (size_t i = dat.size(); i > 0;)
+		{
+			--i;
+			if (dat[i] > _Right.dat[i])return true;
+			if (dat < _Right.dat[i])return false;
+		}
+		return false;
+	}
+
 public:
 	static constexpr unsigned long long max_size = 1ull << 26;
 
@@ -135,12 +159,12 @@ public:
 	}
 
 	//基数変換16->任意
-	static ubigint<num_base> hex(const char* str)
+	static ubigint hex(const char* str)
 	{
 		if constexpr (is_pow2(num_base))
 		{
 			static constexpr unsigned char d = (unsigned char)_log2(num_base);
-			unsigned long long len_str = strnlen_s(str, ubigint<num_base>::max_size * d / 4);
+			unsigned long long len_str = strnlen_s(str, ubigint::max_size * d / 4);
 			size_t dat_len = len_str * 4 / d;
 			std::vector<long long> v(dat_len + 1);
 			v.pop_back();
@@ -179,7 +203,7 @@ public:
 	}
 
 	//基数変換10->任意
-	static ubigint<num_base> dec(const char* str)
+	static ubigint dec(const char* str)
 	{
 		if constexpr (is_pow<10>(num_base))
 		{
@@ -223,11 +247,11 @@ public:
 	}
 
 	//コピー代入コンストラクタ
-	ubigint(const ubigint& _Right): dat(_Right.dat), max(_Right.max)
+	ubigint(const ubigint& _Right): dat(_Right.dat), max(_Right.max), carry_fixed(_Right.carry_fixed)
 	{}
 
 	//ムーブ代入コンストラクタ
-	ubigint(ubigint&& _Right)noexcept : dat(std::move(_Right.dat)), max(_Right.max)
+	ubigint(ubigint&& _Right)noexcept : dat(std::move(_Right.dat)), max(_Right.max), carry_fixed(_Right.carry_fixed)
 	{}
 
 	//コピー代入演算子
@@ -235,6 +259,7 @@ public:
 	{
 		dat = _Right.dat;
 		max = _Right.max;
+		carry_fixed = _Right.carry_fixed;
 		return *this;
 	}
 
@@ -243,12 +268,13 @@ public:
 	{
 		dat = std::move(_Right.dat);
 		max = _Right.max;
+		carry_fixed = _Right.carry_fixed;
 		return *this;
 	}
 
 	void dump()
 	{
-		fix_carry_force();
+		if(!carry_fixed)fix_carry_force();
 		for (size_t i = dat.size(); i > 0;)
 		{
 			--i;
@@ -259,7 +285,7 @@ public:
 
 	void dump(const char* fpath, const char* str)
 	{
-		fix_carry_force();
+		if(!carry_fixed)fix_carry_force();
 		std::ofstream ofs(fpath);
 		for (size_t i = dat.size(); i > 0;)
 		{
@@ -271,7 +297,7 @@ public:
 
 	void dump(const char* str)
 	{
-		fix_carry_force();
+		if(!carry_fixed)fix_carry_force();
 		for (size_t i = dat.size(); i > 0;)
 		{
 			--i;
@@ -280,11 +306,102 @@ public:
 		std::cout << std::endl;
 	}
 
+	[[nodiscard]]
+	bool operator==(const ubigint& _Right)const&
+	{
+		if (_Right.carry_fixed)
+		{
+			if (carry_fixed)
+			{
+				return equal(_Right);
+			}
+			else
+			{
+				ubigint tmp(*this);
+				tmp.fix_carry_force();
+				return tmp.equal(_Right);
+			}
+		}
+		else
+		{
+			ubigint tmp(_Right);
+			tmp.fix_carry_force();
+			if (carry_fixed)
+			{
+				return equal(tmp);
+			}
+			else
+			{
+				ubigint tmp2(*this);
+				tmp2.fix_carry_force();
+				return tmp2.equal(tmp);
+			}
+		}
+	}
+
+	[[nodiscard]]
+	bool operator>(const ubigint& _Right)const&
+	{
+		if (_Right.carry_fixed)
+		{
+			if (carry_fixed)
+			{
+				return greater(_Right);
+			}
+			else
+			{
+				ubigint tmp(*this);
+				tmp.fix_carry_force();
+				return tmp.greater(_Right);
+			}
+		}
+		else
+		{
+			ubigint tmp(_Right);
+			tmp.fix_carry_force();
+			if (carry_fixed)
+			{
+				return greater(tmp);
+			}
+			else
+			{
+				ubigint tmp2(*this);
+				tmp2.fix_carry_force();
+				return tmp2.greater(tmp);
+			}
+		}
+	}
+
+	[[nodiscard]]
+	bool operator<(const ubigint& _Right)const&
+	{
+		return _Right.operator>(*this);
+	}
+
+	[[nodiscard]]
+	bool operator>=(const ubigint& _Right)const&
+	{
+		return !(operator<(_Right));
+	}
+
+	[[nodiscard]]
+	bool operator<=(const ubigint& _Right)const&
+	{
+		return !(operator>(_Right));
+	}
+
+	[[nodiscard]]
+	bool operator!=(const ubigint& _Right)const&
+	{
+		return !operator==(_Right);
+	}
+
 	//前置インクリメント
 	ubigint& operator++()
 	{
 		++dat[0];
 		++max;
+		carry_fixed = false;
 		fix_carry();
 		return *this;
 	}
@@ -292,7 +409,7 @@ public:
 	//後置インクリメント
 	ubigint operator++(int)
 	{
-		ubigint<num_base> tmp = *this;
+		ubigint tmp = *this;
 		this->operator++();
 		return tmp;
 	}
@@ -302,6 +419,7 @@ public:
 	{
 		--dat[0];
 		++max;
+		carry_fixed = false;
 		fix_carry();
 		return *this;
 	}
@@ -309,7 +427,7 @@ public:
 	//後置デクリメント
 	ubigint operator--(int)
 	{
-		ubigint<num_base> tmp = *this;
+		ubigint tmp = *this;
 		this->operator--();
 		return tmp;
 	}
@@ -320,6 +438,7 @@ public:
 		if (_Right.dat.size() > dat.size())dat.resize(_Right.dat.size(), 0);
 		for (size_t i = 0; i < _Right.dat.size(); ++i)dat[i] += _Right.dat[i];
 		max += _Right.max;
+		carry_fixed = false;
 		fix_carry();
 		return *this;
 	}
@@ -338,6 +457,7 @@ public:
 		if (_Right.dat.size() > dat.size())dat.resize(_Right.dat.size(), 0);
 		for (size_t i = 0; i < _Right.dat.size(); ++i)dat[i] -= _Right.dat[i];
 		max += _Right.max;
+		carry_fixed = false;
 		fix_carry();
 		return *this;
 	}
@@ -348,6 +468,7 @@ public:
 		if (dat.size() > _Right.dat.size())_Right.dat.resize(dat.size(), 0);
 		for (size_t i = 0; i < dat.size(); ++i)_Right.dat[i] = dat[i] - _Right.dat[i];
 		_Right.max += max;
+		carry_fixed = false;
 		_Right.fix_carry();
 	}
 
@@ -369,6 +490,7 @@ public:
 	}
 
 	//数論変換を使って掛け算
+	[[nodiscard]]
 	ubigint multiply_ntt(const ubigint& num)const&
 	{
 		static constexpr unsigned long ntt_mod1 = 2013265921;
@@ -405,8 +527,8 @@ public:
 			}
 
 			//ntt_mod1でntt
-			convolution_mod<ntt_mod1, g1>(buf1.data(), buf_num1.data(), result_size, new_size);
-			ubigint<num_base> prod(std::move(buf1));
+			convolution_mod<ntt_mod1, g1, multi_thread>(buf1.data(), buf_num1.data(), result_size, new_size);
+			ubigint prod(std::move(buf1));
 			prod.fix_carry_force();
 			return prod;
 		}
@@ -430,7 +552,7 @@ public:
 			}
 
 			//ntt_mod1でntt
-			convolution_mod<ntt_mod1, g1>(buf1.data(), buf_num1.data(), result_size, new_size);
+			convolution_mod<ntt_mod1, g1, multi_thread>(buf1.data(), buf_num1.data(), result_size, new_size);
 
 			//コピー2回目
 			size_t j;
@@ -450,7 +572,7 @@ public:
 			}
 
 			//ntt_mod2でntt
-			convolution_mod<ntt_mod2, g2>(buf2.data(), buf_num1.data(), result_size, new_size);
+			convolution_mod<ntt_mod2, g2, multi_thread>(buf2.data(), buf_num1.data(), result_size, new_size);
 
 
 			buf_num1.resize(result_size);
@@ -458,7 +580,7 @@ public:
 			{
 				buf_num1[i] = _garner2<ntt_mod1, ntt_mod2>(buf1[i], buf2[i]);
 			}
-			ubigint<num_base> prod(std::move(buf_num1));
+			ubigint prod(std::move(buf_num1));
 			prod.fix_carry_force();
 			return prod;
 		}
@@ -483,7 +605,7 @@ public:
 			}
 			
 			//ntt_mod1で畳み込み
-			convolution_mod<ntt_mod1, g1>(buf1.data(), buf_num1.data(), result_size, new_size);
+			convolution_mod<ntt_mod1, g1, multi_thread>(buf1.data(), buf_num1.data(), result_size, new_size);
 
 			//コピー2回目
 			size_t j;
@@ -503,7 +625,7 @@ public:
 			}
 
 			//ntt_mod2で畳み込み
-			convolution_mod<ntt_mod2, g2>(buf2.data(), buf_num1.data(), result_size, new_size);
+			convolution_mod<ntt_mod2, g2, multi_thread>(buf2.data(), buf_num1.data(), result_size, new_size);
 
 			//コピー3回目
 			for (j = 0; j < dat.size(); ++j)
@@ -522,7 +644,7 @@ public:
 			}
 
 			//ntt_mod3で畳み込み
-			convolution_mod<ntt_mod3, g3>(buf3.data(), buf_num1.data(), result_size, new_size);
+			convolution_mod<ntt_mod3, g3, multi_thread>(buf3.data(), buf_num1.data(), result_size, new_size);
 			static constexpr unsigned char digit_size = _log_ceil<num_base>(1 << 25) + (unsigned char)2;
 			buf_num1 = std::vector<long long>((size_t)result_size + digit_size - 1, 0);
 
@@ -536,21 +658,21 @@ public:
 				}
 			}
 
-			ubigint<num_base> prod(std::move(buf_num1));
+			ubigint prod(std::move(buf_num1));
 			prod.fix_carry_force();
 			return prod;
 		}
 		else
 		{
 			throw std::out_of_range("掛け算失敗");
-			return ubigint<num_base>();
+			return ubigint();
 		}
 	}
 
 	ubigint& operator*=(ubigint& _Right)
 	{
-		fix_carry_force();
-		_Right.fix_carry_force();
+		if (!carry_fixed)fix_carry_force();
+		if (!_Right.carry_fixed)_Right.fix_carry_force();
 		unsigned long long ntt_size = ceil_pow2(_Right.dat.size() + dat.size());
 		if (_Right.dat.size() * dat.size() < ntt_size * ((unsigned long long)_log2(ntt_size) * 3 + 1))
 		{
@@ -567,56 +689,87 @@ public:
 
 	ubigint& operator*=(const ubigint& _Right)
 	{
-		fix_carry_force();
-		ubigint buf(_Right);
-		buf.fix_carry_force();
-		unsigned long long ntt_size = ceil_pow2(buf.dat.size() + dat.size());
-		if (buf.dat.size() * dat.size() < ntt_size * ((unsigned long long)_log2(ntt_size) * 3 + 1))
+		if(!carry_fixed)fix_carry_force();
+		if (_Right.carry_fixed)
 		{
-			*this = multiply_naive(buf);
-			delete_zero();
+			unsigned long long ntt_size = ceil_pow2(_Right.dat.size() + dat.size());
+			if (_Right.dat.size() * dat.size() < ntt_size * ((unsigned long long)_log2(ntt_size) * 3 + 1))
+			{
+				*this = multiply_naive(_Right);
+				delete_zero();
+			}
+			else
+			{
+				*this = multiply_ntt(_Right);
+			}
+			fix_carry_force();
 		}
 		else
 		{
-			*this = multiply_ntt(buf);
+			ubigint buf(_Right);
+			operator*=(buf);
 		}
-		fix_carry_force();
+		return *this;
+
+	}
+
+	[[nodiscard]]
+	ubigint operator*(const ubigint& _Right)const&
+	{
+		return ubigint(*this) *= _Right;
+	}
+
+	ubigint& operator>>=(unsigned long diff)
+	{
+		if (dat.size() <= diff)*this = ubigint();
+		else
+		{
+			dat.erase(dat.cbegin(), dat.cbegin() + diff);
+		}
 		return *this;
 	}
 
-	ubigint operator*(const ubigint& _Right)const&
+	ubigint operator>>(unsigned long diff)const&
 	{
-		ubigint<num_base> buf(*this);
-		buf *= _Right;
-		return buf;
-	}
-	
-	ubigint operator*(ubigint& _Right)const&
-	{
-		ubigint<num_base> buf(*this);
-		buf *= _Right;
-		return buf;
+		return ubigint(*this) >>= diff;
 	}
 
-	ubigint operator*(ubigint& _Right)&
+	ubigint& operator<<=(unsigned long diff)
 	{
-		fix_carry_force();
-		_Right.fix_carry_force();
-		unsigned long long ntt_size = ceil_pow2(_Right.dat.size() + dat.size());
-		if (_Right.dat.size() * dat.size() < ntt_size * ((unsigned long long)_log2(ntt_size) * 3 + 1))
+		dat.insert(dat.cbegin(), diff, 0);
+		return *this;
+	}
+
+	ubigint operator<<(unsigned long diff)const&
+	{
+		return ubigint(*this) <<= diff;
+	}
+	//逆数
+	ubigint inverse(unsigned long seido)const&
+	{
+		ubigint x(num_base / dat.back());
+		//Newton-Raphson method
+		return x;
+	}
+
+	ubigint operator/(const ubigint& _Right)const&
+	{
+		if (_Right.dat.size() > dat.size())return ubigint();
+		if (_Right.dat.size() == 1)
 		{
-			ubigint tmp = multiply_naive(_Right);
-			tmp.delete_zero();
-			return tmp;
+			//simple method
 		}
 		else
 		{
-			ubigint tmp = multiply_ntt(_Right);
-			tmp.fix_carry_force();
-			return tmp;
+			//Newton-Raphson method
 		}
+		return ubigint();
 	}
 
+	ubigint& operator/=(const ubigint& _Right)
+	{
+		return *this;
+	}
 	void random(size_t digits)
 	{
 		static std::random_device seed_gen;
@@ -629,7 +782,6 @@ public:
 			dat[i] = dist(mt);
 		}
 		max = num_base;
+		carry_fixed = true;
 	}
 };
-
-#endif

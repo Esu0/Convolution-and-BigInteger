@@ -50,10 +50,10 @@ int test3()
 
 int test5()
 {
-	using ubigintdec = ubigint<1ull << 32>;
+	using ubigintdec = ubigint<1ull << 16>;
 	ubigintdec a, b;
-	a.random(1000000);
-	b.random(1000000);
+	a.random(1ull << 26);
+	b.random(1ull << 26);
 	//a.dump("../results/result_a.txt", " ");
 	//b.dump("../results/result_b.txt", " ");
 	timer_start();
@@ -80,7 +80,7 @@ int test6()
 
 int test7()
 {
-	using bigint = ubigint<100000>;
+	using bigint = ubigint<10000000000>;
 	bigint a, b;
 	a.random(5);
 	b.random(5);
@@ -89,6 +89,11 @@ int test7()
 	if (a == a)std::cout << "a == a" << std::endl;
 	if (a == b)std::cout << "a == b" << std::endl;
 	if (a != b)std::cout << "a != b" << std::endl;
+	if (a >= b)std::cout << "a >= b" << std::endl;
+	if (a > b)std::cout << "a > b" << std::endl;
+	if (a <= b)std::cout << "a <= b" << std::endl;
+	if (a < b)std::cout << "a < b" << std::endl;
+
 	return 0;
 }
 int main()

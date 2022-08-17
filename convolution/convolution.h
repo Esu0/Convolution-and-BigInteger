@@ -291,6 +291,7 @@ void _garner3(long long r1, long long r2, long long r3, unsigned long long resul
 		}
 	}
 }
+
 template<unsigned long mod, unsigned long g>
 class ntt
 {

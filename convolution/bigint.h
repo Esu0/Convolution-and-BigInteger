@@ -129,7 +129,7 @@ private:
 		{
 			--i;
 			if (dat[i] > _Right.dat[i])return true;
-			if (dat < _Right.dat[i])return false;
+			if (dat[i] < _Right.dat[i])return false;
 		}
 		return false;
 	}

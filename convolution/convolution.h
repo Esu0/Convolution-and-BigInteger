@@ -7,6 +7,7 @@
 #include<vector>
 #include<cassert>
 #include<thread>
+#include<stdlib.h>
 
 #ifdef _MSC_VER
 #include<intrin.h>
@@ -341,7 +342,7 @@ public:
 //vは(size*8) byte以上のメモリが確保されている
 //size > 2, size = 2^Nと表せる
 template<unsigned long mod, unsigned long g, bool inv = false>
-void number_theoretic_transform(long long *v, unsigned long size)
+void number_theoretic_transform(long long *v, size_t size)
 {
 	static ntt<mod, g> table;
 	assert(is_pow2(size) && size > 2 && table.rank >= _log2(size));
@@ -352,7 +353,7 @@ void number_theoretic_transform(long long *v, unsigned long size)
 	//逆変換
 	if constexpr (inv)
 	{
-		stype n = size;
+		stype n = (stype)size;
 		stype o = bsf_fast(n);
 		stype order = o;
 
@@ -405,7 +406,7 @@ void number_theoretic_transform(long long *v, unsigned long size)
 	//正変換
 	else
 	{
-		stype n = size;
+		stype n = (stype)size;
 		stype o = bsf_fast(n);
 		stype order = o;
 
@@ -457,7 +458,7 @@ void number_theoretic_transform(long long *v, unsigned long size)
 }
 
 template<unsigned long mod, unsigned long g, bool multi_thread = false>
-void convolution_mod(long long* a, long long* b, unsigned long size, unsigned long ntt_size)
+void convolution_mod(long long* a, long long* b, size_t size, size_t ntt_size)
 {
 	if constexpr (multi_thread)
 	{
@@ -471,22 +472,44 @@ void convolution_mod(long long* a, long long* b, unsigned long size, unsigned lo
 		number_theoretic_transform<mod, g>(a, ntt_size);
 		number_theoretic_transform<mod, g>(b, ntt_size);
 	}
-	for (unsigned long i = 0; i < ntt_size; ++i)
+	for (size_t i = 0; i < ntt_size; ++i)
 	{
 		a[i] = a[i] * b[i] % mod;
 	}
 	number_theoretic_transform<mod, g, true>(a, ntt_size);
 	long long inv_size = _minv<mod>(ntt_size);
-	for (unsigned long i = 0; i < size; ++i)
+	for (size_t i = 0; i < size; ++i)
 	{
 		a[i] = a[i] * inv_size % mod;
 	}
 }
 
 
+//unsafe
+template<unsigned long mod, unsigned long g, bool multi_thread = false>
+std::vector<long long> convolution_mod_const(
+	const long long* a,
+	const long long* b,
+	size_t na,
+	size_t nb)
+{
+	size_t size = na + nb;
+	size_t ntt_size = ceil_pow2(size);
+	std::vector<long long> ta(ntt_size);
+	long long* tb = reinterpret_cast<long long*>((std::malloc)(sizeof(long long) * ntt_size));
+	if (tb == nullptr)throw std::bad_alloc();
+	size_t i;
+	for (i = 0; i < na; ++i)ta[i] = a[i] % mod;
+	for (i = 0; i < nb; ++i)tb[i] = b[i] % mod;
+	for (; i < ntt_size; ++i)tb[i] = 0;
+	convolution_mod<mod, g, multi_thread>(ta.data(), tb, size, ntt_size);
+	(std::free)(tb);
+	return ta;
+}
+
 //num1はn1ワード、num2はn2ワード、resultはn1+n2ワードのメモリが確保されているものとする
 template<unsigned long long num_base = (1ull << 32)>
-void multiply_naive_unsafe(const long long* num1, const long long* num2, long long* result, unsigned long n1, unsigned long n2)
+void multiply_naive_unsafe(const long long* num1, const long long* num2, long long* result, size_t n1, size_t n2)
 {
 	static_assert(num_base >= 2, "進数が不正");
 
@@ -494,12 +517,12 @@ void multiply_naive_unsafe(const long long* num1, const long long* num2, long lo
 	{
 		static constexpr unsigned long long R = (unsigned long long)(-(long long)num_base) % num_base;
 		static constexpr unsigned long long A = (unsigned long long)(-(long long)num_base) / num_base + 1;
-		for (unsigned long i = 0; i < n1 + n2; ++i)result[i] = 0;
-		for (unsigned long i = 0; i < n1; ++i)
+		for (size_t i = 0; i < n1 + n2; ++i)result[i] = 0;
+		for (size_t i = 0; i < n1; ++i)
 		{
-			for (unsigned long j = 0; j < n2; ++j)
+			for (size_t j = 0; j < n2; ++j)
 			{
-				unsigned long k = i + j;
+				size_t k = i + j;
 				unsigned long long a = num1[i] >> 32, b = num1[i] & 0xffffffffll;
 				unsigned long long c = num2[j] >> 32, d = num2[j] & 0xffffffffll;
 				unsigned long long a0 = b * d + (result[k] & 0xffffffffull), a1 = a * d + b * c + (result[k] >> 32), a2 = a * c;
@@ -520,12 +543,12 @@ void multiply_naive_unsafe(const long long* num1, const long long* num2, long lo
 	}
 	else
 	{
-		for (unsigned long i = 0; i < n1 + n2; ++i)result[i] = 0;
-		for (unsigned long i = 0; i < n1; ++i)
+		for (size_t i = 0; i < n1 + n2; ++i)result[i] = 0;
+		for (size_t i = 0; i < n1; ++i)
 		{
-			for (unsigned long j = 0; j < n2; ++j)
+			for (size_t j = 0; j < n2; ++j)
 			{
-				unsigned long k = i + j;
+				size_t k = i + j;
 				unsigned long long tmp = num1[i] * num2[j] + result[k];
 				result[k] = tmp % num_base;
 				result[k + 1] += tmp / num_base;

@@ -96,7 +96,66 @@ int test7()
 
 	return 0;
 }
+
+int test8()
+{
+	using bigint = ubigint<10000000000, true>;
+	bigint a, b;
+	a.random(100000);
+	b.random(100000);
+	std::vector<long long> v1 = a.dat, v2 = b.dat;
+	auto v3 = bigint::multiply(v1.data(), v2.data(), v1.size(), v2.size());
+	for (size_t i = 0; i < 100; ++i)
+	{
+		std::cout << v3[i] << ' ';
+	}
+	std::cout << std::endl;
+	return 0;
+}
+
+int test9()
+{
+	using bigint = ubigint<10000000000, true>;
+	bigint a, b;
+	a.random(100000);
+	b.random(100000);
+	timer_start();
+	auto c = a.multiply(b);
+	timer_end();
+	timer_print();
+	return 0;
+}
+
+int test10()
+{
+	using bigint = ubigint<100000>;
+	bigint a;
+	a.random(128);
+	a.dump();
+	std::cout << std::endl;
+	bigint b = a.inverse(128);
+	b.dump();
+	std::cout << std::endl;
+	bigint c = a * b;
+	c.dump(c.dat.size() - 128, c.dat.size());
+	return 0;
+}
+
+int test11()
+{
+	using bigint = ubigint<10000000000, true>;
+	bigint a, b;
+	a.random(100000);
+	timer_start();
+	b = a.inverse(100000);
+	timer_end();
+	timer_print();
+	
+	//bigint c = a * b;
+	//c.dump("../results/prod.txt", " ");
+	return 0;
+}
 int main()
 {
-	return test5();
+	return test10();
 }

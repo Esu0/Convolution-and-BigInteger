@@ -54,7 +54,7 @@ template<unsigned long long num_base, bool multi_thread = false>
 class ubigint
 {
 	static_assert(num_base >= 2, "進数が不正");
-	static_assert(num_base <= 1ull << 60, "進数が大きすぎる");
+	static_assert(num_base <= 1ull << 32, "進数が大きすぎる");
 public:
 	std::vector<long long> dat;
 	long long max = num_base;
@@ -518,7 +518,7 @@ public:
 		if (dat.size() > _Right.dat.size())_Right.dat.resize(dat.size(), 0);
 		for (size_t i = 0; i < dat.size(); ++i)_Right.dat[i] = dat[i] - _Right.dat[i];
 		_Right.max += max;
-		carry_fixed = false;
+		_Right.carry_fixed = false;
 		_Right.fix_carry();
 	}
 
@@ -908,7 +908,7 @@ public:
 		return ubigint(*this) *= _Right;
 	}
 
-	ubigint& operator>>=(unsigned long diff)
+	ubigint& operator>>=(size_t diff)
 	{
 		if (dat.size() <= diff)*this = ubigint();
 		else
@@ -918,18 +918,18 @@ public:
 		return *this;
 	}
 
-	ubigint operator>>(unsigned long diff)const&
+	ubigint operator>>(size_t diff)const&
 	{
 		return ubigint(*this) >>= diff;
 	}
 
-	ubigint& operator<<=(unsigned long diff)
+	ubigint& operator<<=(size_t diff)
 	{
 		dat.insert(dat.cbegin(), diff, 0);
 		return *this;
 	}
 
-	ubigint operator<<(unsigned long diff)const&
+	ubigint operator<<(size_t diff)const&
 	{
 		return ubigint(*this) <<= diff;
 	}
@@ -980,7 +980,7 @@ public:
 			xn = std::move(tmp2);
 		}
 		xn = std::vector<long long>({ xn[1], xn[2] });
-		while (sag / 2 < seido)
+		while (sag / 2 - sag / 50 < seido)
 		{
 			size_t sag_double = sag * 2;
 			size_t sag_this = (std::min)(sag_double, dat.size());
@@ -991,32 +991,13 @@ public:
 			size_t t1dist = tmp1.size() - sag - 1;
 			std::vector<long long> tmp2 = multiply(xn.data(), tmp1.data() + t1dist, sag, sag);
 			tmp2.resize(sag_double);
-			if constexpr (num_base <= 0x0000000100000000ull)
+			long long carry = 0;
+			long long t1b = tmp1.back();
+			for (size_t i = 0; i < xn.size(); ++i)
 			{
-				long long carry = 0;
-				long long t1b = tmp1.back();
-				for (size_t i = 0; i < xn.size(); ++i)
-				{
-					long long tmp = tmp2[i + sag] + carry + t1b * xn[i];
-					tmp2[i + sag] = tmp % num_base;
-					carry = tmp / num_base;
-				}
-			}
-			else
-			{
-				//2^64 % num_base
-				static constexpr unsigned long long R = (unsigned long long)(-(long long)num_base) % num_base;
-				//2^64 / num_base
-				static constexpr unsigned long long A = (unsigned long long)(-(long long)num_base) / num_base + 1;
-				long long t1b = tmp1.back();
-				long long t1b0 = t1b >> 32;
-				long long t1b1 = t1b & 0xffffffffull;
-				for (size_t i = 0; i < xn.size(); ++i)
-				{
-					long long xni0 = xn[i] >> 32;
-					long long xni1 = xn[i] & 0xffffffffull;
-					//オーバーフロー対策掛け算
-				}
+				long long tmp = tmp2[i + sag] + carry + t1b * xn[i];
+				tmp2[i + sag] = tmp % num_base;
+				carry = tmp / num_base;
 			}
 			xn = std::move(tmp2);
 			sag = sag_double;
@@ -1033,24 +1014,188 @@ public:
 		return result;
 	}
 
-	ubigint operator/(const ubigint& _Right)const&
+	void set(size_t l, size_t r, long long num)
 	{
+		if (0 > num || num >= num_base)return;
+		if (r <= l)return;
+		if (dat.size() < r)dat.resize(r);
+		for (size_t i = l; i < r; ++i)dat[i] = num;
+	}
+
+	size_t size()const&
+	{
+		return dat.size();
+	}
+
+	void divide_self(long long num, long long* remainder = nullptr)
+	{
+		long long c = 0;
+		for (size_t i = dat.size(); i > 0;)
+		{
+			--i;
+			long long tmp = c * num_base + dat[i];
+			dat[i] = tmp / num_base;
+			c = tmp % num_base;
+		}
+		if (remainder != nullptr)*remainder = c;
+	}
+
+	//unsafe
+	//キャリー処理必須
+	ubigint divide(long long num, long long* remainder = nullptr)const&
+	{
+		if (num <= 0 || num >= num_base)return ubigint();
+		if (carry_fixed)
+		{
+			long long c = 0;
+			ubigint result;
+			result.dat.resize(dat.size());
+			for (size_t i = dat.size(); i > 0;)
+			{
+				--i;
+				long long tmp = c * num_base + dat[i];
+				result.dat[i] = tmp / num_base;
+				c = tmp % num_base;
+			}
+			if (remainder != nullptr)*remainder = c;
+			return result;
+		}
+		else
+		{
+			ubigint result(*this);
+			result.fix_carry_force();
+			result.divide_self(num, remainder);
+			return result;
+		}
+	}
+
+	//結果は1違う可能性あり
+	ubigint divide_rough(const ubigint& _Right)const&
+	{
+		if (!_Right.carry_fixed)
+		{
+			ubigint tmp(_Right);
+			tmp.fix_carry_force();
+			return this->operator/(tmp);
+		}
+		if (!carry_fixed)
+		{
+			ubigint tmp(*this);
+			tmp.fix_carry_force();
+			return tmp.operator/(_Right);
+		}
 		if (_Right.dat.size() > dat.size())return ubigint();
 		if (_Right.dat.size() == 1)
 		{
 			//simple method
+			return divide(_Right.dat.front());
 		}
 		else
 		{
+			std::vector<long long> v;
+			ubigint tmp;
+			size_t s;
 			//Newton-Raphson method
+			s = dat.size() - _Right.dat.size() + 1;
+			v = multiply(dat.data() + (dat.size() - s), _Right.inverse(s).dat.data(), s, s);
+			tmp.dat.resize(v.size() - s);
+			for (size_t i = 0; i < tmp.dat.size(); ++i)
+			{
+				tmp.dat[i] = v[i + s];
+			}
+			return tmp;
 		}
-		return ubigint();
+	}
+
+	ubigint operator/(const ubigint& _Right)const&
+	{
+		if (!_Right.carry_fixed)
+		{
+			ubigint tmp(_Right);
+			tmp.fix_carry_force();
+			return this->operator/(tmp);
+		}
+		if (!carry_fixed)
+		{
+			ubigint tmp(*this);
+			tmp.fix_carry_force();
+			return tmp.operator/(_Right);
+		}
+		if (_Right.dat.size() > dat.size())return ubigint();
+		if (_Right.dat.size() == 1)
+		{
+			//simple method
+			return divide(_Right.dat.front());
+		}
+		else
+		{
+			std::vector<long long> v;
+			ubigint tmp;
+			size_t s;
+			//Newton-Raphson method
+			s = dat.size() - _Right.dat.size() + 1;
+			v = multiply(dat.data() + (dat.size() - s), _Right.inverse(s).dat.data(), s, s);
+			tmp.dat.resize(v.size() - s);
+			for (size_t i = 0; i < tmp.dat.size(); ++i)
+			{
+				tmp.dat[i] = v[i + s];
+			}
+			if (*this - _Right * tmp >= _Right)return ++tmp;
+			else return tmp;
+		}
 	}
 
 	ubigint& operator/=(const ubigint& _Right)
 	{
+		*this = *this / _Right;
 		return *this;
 	}
+
+	ubigint operator%(const ubigint& _Right)const&
+	{
+		if (!_Right.carry_fixed)
+		{
+			ubigint tmp(_Right);
+			tmp.fix_carry_force();
+			return this->operator%(tmp);
+		}
+		ubigint tmp = *this - divide_rough(_Right) * _Right;
+		if (tmp >= _Right)return tmp - _Right;
+		else return tmp;
+	}
+
+	ubigint& operator%=(const ubigint & _Right)
+	{
+		if (!_Right.carry_fixed)
+		{
+			ubigint tmp(_Right);
+			tmp.fix_carry_force();
+			return this->operator%=(tmp);
+		}
+		*this -= divide_rough(_Right) * _Right;
+		fix_carry_force();
+		if (*this >= _Right)*this -= _Right;
+		return *this;
+	}
+
+	std::pair<ubigint, ubigint> divide(const ubigint& _Right)const&
+	{
+		if (!_Right.carry_fixed)
+		{
+			ubigint tmp(_Right);
+			tmp.fix_carry_force();
+			return divide(tmp);
+		}
+		ubigint div = divide_rough(_Right);
+		ubigint rem = *this - divide_rough(_Right) * _Right;
+		if (rem >= _Right)
+		{
+			++div;
+			rem -= _Right;
+		}
+		return std::pair<ubigint, ubigint>(std::move(div), std::move(rem));
+	}
+
 	void random(size_t digits)
 	{
 		static std::random_device seed_gen;

@@ -66,7 +66,7 @@ int test5()
 
 int test6()
 {
-	using ubigintdec = ubigint<10000000000>;
+	using ubigintdec = ubigint<1000000000>;
 	ubigintdec a, b;
 	a.random(10);
 	b = -2323438937123;
@@ -80,7 +80,7 @@ int test6()
 
 int test7()
 {
-	using bigint = ubigint<10000000000>;
+	using bigint = ubigint<1000000000>;
 	bigint a, b;
 	a.random(5);
 	b.random(5);
@@ -99,7 +99,7 @@ int test7()
 
 int test8()
 {
-	using bigint = ubigint<10000000000, true>;
+	using bigint = ubigint<1000000000, true>;
 	bigint a, b;
 	a.random(100000);
 	b.random(100000);
@@ -115,14 +115,16 @@ int test8()
 
 int test9()
 {
-	using bigint = ubigint<10000000000, true>;
+	using bigint = ubigint<1000000000, true>;
 	bigint a, b;
-	a.random(100000);
-	b.random(100000);
+	a.random(111112);
+	b.random(111112);
+
 	timer_start();
-	auto c = a.multiply(b);
+	auto c = a * b;
 	timer_end();
 	timer_print();
+
 	return 0;
 }
 
@@ -143,19 +145,57 @@ int test10()
 
 int test11()
 {
-	using bigint = ubigint<10000000000, true>;
+	using bigint = ubigint<1000000000, true>;
 	bigint a, b;
-	a.random(100000);
+	size_t len = 111112;
+	a.random(len);
 	timer_start();
-	b = a.inverse(100000);
+	b = a.inverse(len);
 	timer_end();
 	timer_print();
 	
-	//bigint c = a * b;
-	//c.dump("../results/prod.txt", " ");
+	bigint c = a * b;
+	c >>= len - 1;
+	bigint d = 1;
+	d <<= len;
+	d -= c;
+	d.dump();
+	std::cout << d.dat.size() << std::endl;
 	return 0;
 }
+
+int test12()
+{
+	using bigint = ubigint<100000>;
+	bigint a = 42, b = 99999;
+	a <<= 10;
+	b <<= 5;
+
+	bigint c = a / b;
+	c.dump();
+	c = a - c * b;
+	b.dump();
+	c.dump();
+	if (c < b)std::cout << "ok" << std::endl;
+	else std::cout << "ng" << std::endl;
+	return 0;
+}
+
+int test13()
+{
+	using bigint = ubigint<100000>;
+	bigint a, b;
+	a.random(5);
+	b.random(3);
+	bigint c = a % b;
+	a.dump();
+	b.dump();
+	c.dump();
+	
+	return 0;
+}
+
 int main()
 {
-	return test10();
+	return test13();
 }

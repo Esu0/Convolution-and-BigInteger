@@ -1044,7 +1044,7 @@ public:
 	//キャリー処理必須
 	ubigint divide(long long num, long long* remainder = nullptr)const&
 	{
-		if (num <= 0 || num >= num_base)return ubigint();
+		if (num <= 0 || num >= (long long)num_base)return ubigint();
 		if (carry_fixed)
 		{
 			long long c = 0;

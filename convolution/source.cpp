@@ -195,7 +195,24 @@ int test13()
 	return 0;
 }
 
+int test14()
+{
+	using bigint = ubigint<1000000000, true>;
+	bigint a, b;
+	size_t n = 222223;
+	a.random(n);
+	b.random(n / 2);
+
+	timer_start();
+	auto c = a / b;
+	timer_end();
+	timer_print();
+
+	if (a - b * c < b)std::cout << "ok" << std::endl;
+	return 0;
+}
+
 int main()
 {
-	return test13();
+	return test14();
 }

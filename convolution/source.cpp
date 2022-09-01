@@ -5,28 +5,8 @@
 #include<iomanip>
 #include"bigint.h"
 #include<chrono>
-
-std::chrono::system_clock::time_point _Start_time, _End_time;
-
-void timer_start()
-{
-	_Start_time = std::chrono::system_clock::now();
-}
-
-void timer_end()
-{
-	_End_time = std::chrono::system_clock::now();
-}
-
-long long timer_elapsed()
-{
-	return std::chrono::duration_cast<std::chrono::microseconds>(_End_time - _Start_time).count();
-}
-
-void timer_print()
-{
-	std::cout << "execution time: " << (double)timer_elapsed() / 1000 << "ms" << std::endl;
-}
+#include"bigmath.h"
+#include"instant_timer.h"
 
 int test2()
 {
@@ -212,7 +192,18 @@ int test14()
 	return 0;
 }
 
+int test15()
+{
+	using bigint = ubigint<1000000000>;
+	timer_start();
+	bigint a = bigmath::factorial<1000000000>(1000000);
+	timer_end();
+	timer_print();
+	a.dump("../results/fact.txt", " ");
+	return 0;
+}
+
 int main()
 {
-	return test14();
+	return test15();
 }

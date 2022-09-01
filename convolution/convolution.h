@@ -15,13 +15,12 @@
 
 constexpr unsigned long msb(unsigned long x)
 {
-	--x;
 	x |= x >> 1;
 	x |= x >> 2;
 	x |= x >> 4;
 	x |= x >> 8;
 	x |= x >> 16;
-	return ++x;
+	return (++x) >> 1;
 }
 
 constexpr unsigned long _log2(unsigned long long x)
